@@ -31,75 +31,42 @@ int main()
     // Main loop for reading and executing commands
     int running = 1;
     while (running){
+
         // Reading user input
         if ((command_length =read(STDIN_FILENO, command, BUFFER_SIZE))==-1){
-        perror("read"); 
-        exit(EXIT_FAILURE);
+            perror("read"); 
+            exit(EXIT_FAILURE);
         }
 
         ////////////////////////////////////////////////////////////////
-
-
-        // Executing the user's command
-        if (strncmp(command, "fortune", 7) == 0){
-            // Creating a subprocess to execute the fortune command
-            pid_t pid;
-            if ((pid = fork())==-1){
-                perror("fork"); 
-                exit(EXIT_FAILURE);
-            };
-
-            if (pid == 0){
-                execl("/usr/games/fortune", "fortune", NULL);
-                perror("execl");
-                exit(EXIT_FAILURE);
-            }
-            wait(NULL);
-            //////////////////////////////////////////////////////////
-            
-            if (write(STDOUT_FILENO, commandPrefix, BUFFER_SIZE)==-1){ 
-            perror("write"); 
+    
+        // executing the user's command
+    
+        pid_t pid;
+        if ((pid = fork())==-1){
+            perror("fork"); 
             exit(EXIT_FAILURE);
+        };
+
+        if (pid == 0){
+
+            // Removing the "\n" at the end of the command
+            command[strcspn(command, "\n")] = 0;
+
+            if (execlp(command, command, (char*)NULL) == -1){
+                perror("Unknown command :");
+                exit(EXIT_FAILURE);
             }
         }
 
-        else if (strncmp(command, "date", 4) == 0){
-            // Creating a subprocess to execute the date command
-            pid_t pid;
-            if ((pid = fork())==-1){
-                perror("fork"); 
-                exit(EXIT_FAILURE);
-            };
-
-            if (pid == 0){
-                execl("/usr/bin/date", "date", NULL);
-                perror("execl");
-                exit(EXIT_FAILURE);
-            }
-            wait(NULL);
-            //////////////////////////////////////////////////////////
-            
-            if (write(STDOUT_FILENO, commandPrefix, BUFFER_SIZE)==-1){ 
-            perror("write"); 
-            exit(EXIT_FAILURE);
-            }
+        // Waiting for the subprocess to finish
+        wait(NULL);
+        //////////////////////////////////////////////////////////
+        
+        if (write(STDOUT_FILENO, commandPrefix, BUFFER_SIZE)==-1){ 
+        perror("write"); 
+        exit(EXIT_FAILURE);
         }
-
-        // Handling an unknown command
-        else {
-            
-            char message[BUFFER_SIZE] = "Unknown command.\n";
-            if (write(STDOUT_FILENO, message, BUFFER_SIZE)==-1){ 
-            perror("write"); 
-            exit(EXIT_FAILURE);
-            }
-            if (write(STDOUT_FILENO, commandPrefix, BUFFER_SIZE)==-1){ 
-            perror("write"); 
-            exit(EXIT_FAILURE);
-            }
-        }
-
-        /////////////////////////////////////////////////////////////
         
 
     }
