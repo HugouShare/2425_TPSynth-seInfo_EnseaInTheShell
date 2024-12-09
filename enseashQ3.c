@@ -30,8 +30,8 @@ int main()
     ///////////////////////////////////////////////////
 
     // Main loop for reading and executing commands
-    int running = 1;
-    while (running){
+    
+    while (1){
         // Reading user input
         if ((command_length =read(STDIN_FILENO, command, BUFFER_SIZE))==-1){
         perror("read"); 
@@ -42,13 +42,13 @@ int main()
         
 
         // Checking for the 'exit' command
-        if ((strncmp(command, "exit", 4) == 0)|(strncmp(command, "", 4) == 0)){
+        if ((strncmp(command, "exit", 4) == 0)|(command_length == 0)){
             if (write(STDOUT_FILENO, endMessage, BUFFER_SIZE)==-1){ 
                 perror("write"); 
                 exit(EXIT_FAILURE);
             }
 
-            running = 0;
+            exit(EXIT_SUCCESS);
         }
 
 

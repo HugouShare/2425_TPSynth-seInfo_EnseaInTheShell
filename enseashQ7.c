@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
+#include <fcntl.h>
 
 #define BUFFER_SIZE 128 // Prefered buffer size for I/O operations
 
@@ -35,8 +36,8 @@ int main()
     ///////////////////////////////////////////////////
 
     // Main loop for reading and executing commands
-    int running = 1;
-    while (running){
+
+    while (1){
 
         
         // Reading user input
@@ -46,28 +47,32 @@ int main()
         }
 
         // Checking for the 'exit' command
-        if ((strncmp(command_line, "exit", 4) == 0)|(strncmp(command_line, "", 4) == 0)){
-            if (write(STDOUT_FILENO, endMessage, BUFFER_SIZE)==-1){ 
+        if ((strncmp(command_line, "exit", 4) == 0)|(command_length == 0)){
+            if (write(STDOUT_FILENO, endMessage, strlen(endMessage))==-1){ 
                 perror("write"); 
                 exit(EXIT_FAILURE);
             }
-
-            running = 0;
+            exit(EXIT_SUCCESS);
+            
         }
 
-        ////////////////////////////////////////////////////////////////
-        else {
+        
+        else if (strncmp(command_line, "\n", 1) !=0) {
 
             // Removing the "\n" at the end of the command
             command_line[strcspn(command_line, "\n")] = 0;
 
+            int redirection = (strchr(command_line, '>') != NULL);
 
             // if it has one, extract redirection
             char * destination;
-            char * command_call;
-            command_call = strtok_r(command_line, ">", &destination);
-
-            printf("command : %s, destination : %s \n", command_call, destination);
+            char * command_call = command_line;
+            if (redirection){
+                command_call = strtok_r(command_line, ">", &destination);
+                destination ++; // removing the ' ' at the beginning of the string
+                printf("command : %s, destination : %s \n", command_call, destination);
+            }
+            
 
             ////////////////////////////////////////////////////////////////
 
@@ -83,9 +88,6 @@ int main()
             command = token;
             argv[0] = token;    // Warning :the name of the function is included into the arglist
             argc ++;
-
-
-
 
             if (token != NULL) {
                 while ((token = strtok_r(NULL, " ", &rest)) != NULL) { // we don't need to respecify the source string, we only put NULL
@@ -118,13 +120,24 @@ int main()
 
             if (pid == 0){
 
-                
-                
-                
+                int fd;
+
+                if (redirection){
+                    fd = open(destination, O_WRONLY);
+                    dup2(fd, STDOUT_FILENO);
+                }
+
                 if (execvp(command, argv) == -1){
                     perror("Unknown command :");
                     exit(EXIT_FAILURE);
                 }
+
+                if (redirection){
+                    close(fd);
+                }
+                
+            
+                exit(EXIT_SUCCESS);
             }
 
             // Waiting for the subprocess to finish
@@ -138,24 +151,36 @@ int main()
             
             //////////////////////////////////////////////////////////
 
+            // Reading what was written on the console
+            // char consoleBuffer[BUFFER_SIZE];
+            // if (read(STDOUT_FILENO, consoleBuffer, BUFFER_SIZE)==-1){ 
+            //     perror("read"); 
+            //     exit(EXIT_FAILURE);
+            // }
+
+            // if (write(STDOUT_FILENO, consoleBuffer, strlen(consoleBuffer))==-1){ 
+            //     perror("write"); 
+            //     exit(EXIT_FAILURE);
+            // }
+            
+
 
             // Writing the command line prefix (with return value and elapsed time)
-            if (write(STDOUT_FILENO, commandPrefix, BUFFER_SIZE)==-1){ 
-            perror("write"); 
-            exit(EXIT_FAILURE);
+            if (write(STDOUT_FILENO, commandPrefix, strlen(commandPrefix))==-1){ 
+                perror("write"); 
+                exit(EXIT_FAILURE);
             }
-            char returnBuffer[15];
+            char returnBuffer[BUFFER_SIZE];
             
             if (WIFEXITED(status)){
                 sprintf(returnBuffer,"[exit:%d|%dms]", WEXITSTATUS(status), elapsed_time);
             }
-
             else {
                 sprintf(returnBuffer,"[sign:%d|%dms]", WTERMSIG(status), elapsed_time);
             }
             
             
-            if (write(STDOUT_FILENO, returnBuffer, 15)==-1){ 
+            if (write(STDOUT_FILENO, returnBuffer, strlen(returnBuffer))==-1){ 
                 perror("write"); 
                 exit(EXIT_FAILURE);
             }
@@ -170,6 +195,6 @@ int main()
         }
         
     }
-    exit(EXIT_SUCCESS);
+    
     
 }

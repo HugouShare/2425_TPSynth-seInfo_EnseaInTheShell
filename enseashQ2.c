@@ -29,8 +29,8 @@ int main()
     ///////////////////////////////////////////////////
 
     // Main loop for reading and executing commands
-    int running = 1;
-    while (running){
+
+    while (1){
 
         // Reading user input
         if ((command_length =read(STDIN_FILENO, command, BUFFER_SIZE))==-1){
@@ -57,6 +57,7 @@ int main()
                 perror("Unknown command :");
                 exit(EXIT_FAILURE);
             }
+            exit(EXIT_SUCCESS);
         }
 
         // Waiting for the subprocess to finish

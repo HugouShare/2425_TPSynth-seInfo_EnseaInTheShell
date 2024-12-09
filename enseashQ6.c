@@ -35,8 +35,7 @@ int main()
     ///////////////////////////////////////////////////
 
     // Main loop for reading and executing commands
-    int running = 1;
-    while (running){
+    while (1){
 
         
         // Reading user input
@@ -46,13 +45,13 @@ int main()
         }
 
         // Checking for the 'exit' command
-        if ((strncmp(command_line, "exit", 4) == 0)|(strncmp(command_line, "", 4) == 0)){
+        if ((strncmp(command_line, "exit", 4) == 0)|(command_length == 0)){
             if (write(STDOUT_FILENO, endMessage, BUFFER_SIZE)==-1){ 
                 perror("write"); 
                 exit(EXIT_FAILURE);
             }
 
-            running = 0;
+            exit(EXIT_SUCCESS);
         }
 
 
@@ -146,7 +145,7 @@ int main()
             }
             
             
-            if (write(STDOUT_FILENO, returnBuffer, 15)==-1){ 
+            if (write(STDOUT_FILENO, returnBuffer, strlen(returnBuffer))==-1){ 
                 perror("write"); 
                 exit(EXIT_FAILURE);
             }
