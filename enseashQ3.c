@@ -42,7 +42,7 @@ int main()
         
 
         // Checking for the 'exit' command
-        if (strncmp(command, "exit", 4) == 0){
+        if ((strncmp(command, "exit", 4) == 0)|(strncmp(command, "", 4) == 0)){
             if (write(STDOUT_FILENO, endMessage, BUFFER_SIZE)==-1){ 
                 perror("write"); 
                 exit(EXIT_FAILURE);
@@ -50,6 +50,7 @@ int main()
 
             running = 0;
         }
+
 
         // executing the user's command
         else {
