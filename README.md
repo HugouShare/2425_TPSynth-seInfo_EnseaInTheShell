@@ -50,6 +50,6 @@ To redirect the result of a function to a file (in or out), in the child process
 
 Unfortunately, we did not have time to finish this question. However, we managed to setup the two child processes that will execute both functions of the command line. We also set up the pipe to transmit data between them. 
 
-END
+## END
 
 
