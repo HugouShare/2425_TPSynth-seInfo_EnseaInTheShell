@@ -39,6 +39,10 @@ int main()
 
     while (1){
 
+        int redirection_in = 0;
+        int redirection_out = 0;
+        int redirection_pipe = 0;
+
         
         // Reading user input
         if ((command_length =read(STDIN_FILENO, command_line, BUFFER_SIZE))==-1){
@@ -62,48 +66,77 @@ int main()
             // Removing the "\n" at the end of the command
             command_line[strcspn(command_line, "\n")] = 0;
 
-            int redirection_out = (strchr(command_line, '>') != NULL);
-            int redirection_in = (strchr(command_line, '<') != NULL);
+            redirection_out = (strchr(command_line, '>') != NULL);
+            redirection_in = (strchr(command_line, '<') != NULL);
+            redirection_pipe = (strchr(command_line, '|') != NULL);
+            
 
             // if it has one, extract redirection
             char * attached_file;
-            char * command_call = command_line;
+            char * command_call1 = command_line;
+            char * command_call2 = command_call1;
+
             if (redirection_out){
-                command_call = strtok_r(command_line, ">", &attached_file);
+                command_call1 = strtok_r(command_line, ">", &attached_file);
                 attached_file ++; // removing the ' ' at the beginning of the string
             }
             if (redirection_in){
-                command_call = strtok_r(command_line, "<", &attached_file);
+                command_call1 = strtok_r(command_line, "<", &attached_file);
                 attached_file ++; // removing the ' ' at the beginning of the string
             }
-            
+            if (redirection_pipe){
+                command_call1 = strtok_r(command_line, "|", &command_call2);
+                command_call2 ++; // removing the ' ' at the beginning of the string
+            }
 
             ////////////////////////////////////////////////////////////////
 
-            // Extracting the command and its arguments
-            char *command;
-            int argc = 0;
-            char *argv[11];
+            // Extracting each command and its arguments
+            char *command1;
+            int argc1 = 0;
+            char *argv1[11];
 
             char *token;
-            char *rest = command_call;
+            char *rest = command_call1;
 
             token = strtok_r(rest, " ", &rest); // returns a string before the first space in command_line
-            command = token;
-            argv[0] = token;    // Warning :the name of the function is included into the arglist
-            argc ++;
+            command1 = token;
+            argv1[0] = token;    // Warning :the name of the function is included into the arglist
+            argc1 ++;
 
             if (token != NULL) {
                 while ((token = strtok_r(NULL, " ", &rest)) != NULL) { // we don't need to respecify the source string, we only put NULL
-                    argv[argc] = token;
+                    argv1[argc1] = token;
                     if (token != NULL){
-                        argc++;
+                        argc1++;
                     }
                     
                 }
             }
 
-            argv[argc]= (char *)NULL;
+            argv1[argc1]= (char *)NULL;
+
+            char *command2;
+            int argc2 = 0;
+            char *argv2[11];
+            rest = command_call2;
+
+            token = strtok_r(rest, " ", &rest); // returns a string before the first space in command_line
+            command2 = token;
+            argv2[0] = token;    // Warning :the name of the function is included into the arglist
+            argc2 ++;
+
+            if (token != NULL) {
+                while ((token = strtok_r(NULL, " ", &rest)) != NULL) { // we don't need to respecify the source string, we only put NULL
+                    argv2[argc2] = token;
+                    if (token != NULL){
+                        argc2++;
+                    }
+                    
+                }
+            }
+
+            argv2[argc2]= (char *)NULL;
 
             ////////////////////////////////////////////////////////////////
 
@@ -112,20 +145,26 @@ int main()
     
             pid_t pid;
             int status;
-            if ((pid = fork())==-1){
-                perror("fork"); 
-                exit(EXIT_FAILURE);
-            };
+
+            // Initializing the pipe for interprocess communication
+            int pipefd[2];
+            pipe(pipefd);
 
             // Initializing the timestamps
             struct timespec t_start;
             struct timespec t_end;
             clock_gettime(CLOCK_REALTIME, &t_start);
 
+
+            if ((pid = fork())==-1){
+                perror("fork"); 
+                exit(EXIT_FAILURE);
+            };
+
             if (pid == 0){
 
                 int fd;
-
+                
                 if (redirection_out) {
                     if ((fd = open(attached_file, O_CREAT|O_WRONLY, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP))==-1){
                         perror("open");
@@ -140,8 +179,11 @@ int main()
                     }
                     dup2(fd, STDIN_FILENO);
                 }
-
-                if (execvp(command, argv) == -1){
+                if (redirection_pipe) {
+                    dup2(pipefd[1], STDOUT_FILENO);
+                    close(pipefd[0]);
+                }
+                if (execvp(command1, argv1) == -1){
                     perror("Unknown command :");
                     exit(EXIT_FAILURE);
                 }
@@ -154,14 +196,35 @@ int main()
                 exit(EXIT_SUCCESS);
             }
 
-            // Waiting for the subprocess to finish
+            if (redirection_pipe) {
+                printf("test");
+                if ((pid = fork())==-1){
+                perror("fork"); 
+                exit(EXIT_FAILURE);
+                };
+
+                if (pid == 0){
+
+                    dup2(STDIN_FILENO, pipefd[0]);
+                    close(pipefd[1]);
+                    
+                    if (execvp(command2, argv2) == -1){
+                        perror("Unknown command :");
+                        exit(EXIT_FAILURE);
+                    }
+                    
+                }
+            }
+
+            
+            // WaitSTDOUT_FILENOing for the subprocess to finish
             wait(&status);
             //////////////////////////////////////////////////////////
 
             // Getting the time elapsed since the fork call
 
             clock_gettime(CLOCK_REALTIME, &t_end);
-            int elapsed_time = ((double)(t_end.tv_nsec - t_start.tv_nsec))/(1000000);;
+            int elapsed_time = ((double)(t_end.tv_nsec - t_start.tv_nsec))/(1000000);
             
             //////////////////////////////////////////////////////////
 
